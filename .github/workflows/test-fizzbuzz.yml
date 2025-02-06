@@ -1,58 +1,24 @@
-name: Tests unitaires et commentaire PR
+name: Run FizzBuzz Tests with unittest
 
 on:
-  pull_request:
+  push:
     branches:
       - main
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
-    name: Exécuter les tests unitaires
     runs-on: ubuntu-latest
 
     steps:
-      - name: Cloner le dépôt
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configurer Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.9'
 
-      - name: Installer les dépendances
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt  # Si tu as un fichier requirements.txt. Si pas, tu peux ignorer cette étape
-
-      - name: Lancer les tests unitaires
-        id: run_tests
-        run: |
-          python -m unittest testunitaire.py > test_results.txt 2>&1 || echo "Tests échoués" > test_status.txt
-
-      - name: Vérifier les erreurs de test
-        id: check_errors
-        run: |
-          if [ -f test_status.txt ]; then
-            echo "error=true" >> $GITHUB_ENV  # Si un échec est trouvé, on définit `error=true`
-          else
-            echo "error=false" >> $GITHUB_ENV  # Sinon, on définit `error=false`
-          fi
-
-      - name: Commenter la PR en cas d'échec
-        if: env.error == 'true'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const testResults = fs.readFileSync('test_results.txt', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.payload.pull_request.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `❌ Les tests ont échoué. Voici les résultats:\n\`\`\`\n${testResults}\n\`\`\`\nMerci de corriger les erreurs !`
-            });
-
-      - name: Succès des tests ✅
-        if: env.error == 'false'
-        run: echo "Tous les tests sont passés avec succès !"
+      - name: Run tests
+        run: python -m unittest discover test
