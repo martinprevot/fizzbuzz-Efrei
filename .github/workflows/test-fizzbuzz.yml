@@ -1,0 +1,54 @@
+name: Tests unitaires et commentaire PR
+
+on:
+  pull_request:
+    branches:
+      - main 
+
+jobs:
+  test:
+    name: Exécuter les tests unitaires
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cloner le dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x' 
+
+
+      - name: Lancer les tests
+        id: run_tests
+        run: |
+          python -m unittest testunitaire.py > test_results.txt 2>&1 || echo "Tests échoués" > test_status.txt
+
+      - name: Vérifier les erreurs de test
+        id: check_errors
+        run: |
+          if [ -f test_status.txt ]; then
+            echo "error=true" >> $GITHUB_ENV
+          else
+            echo "error=false" >> $GITHUB_ENV
+          fi
+
+      - name: Commenter la PR en cas d'échec
+        if: env.error == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const testResults = fs.readFileSync('test_results.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ Les tests ont échoué. Voici les résultats:\n\`\`\`\n${testResults}\n\`\`\`\nMerci de corriger les erreurs !`
+            });
+
+      - name: Succès des tests ✅
+        if: env.error == 'false'
+        run: echo "Tous les tests sont passés avec succès !"
